@@ -354,3 +354,46 @@ expect(2).toBeLessThanOrEqual(1);
 - Serve as documentation: Test names and expectations describe how the system should behave.
 
 For a full list of Jest matchers, see the official docs: [expect](https://jestjs.io/docs/expect) API on the Jest website.
+
+## Test Suites
+
+In the previous lesson, we talked about unit testing. However, writing tests on its own isn't enough; we also need to organize these tests.
+
+For example, let's say we need to test a registration request handler. This handler validates the data, calculates the password hash, and writes data to the database. Each of these operations is performed by a separate function, and the request handler calls them in turn. Since each of these functions constitutes a unit, we need to test them all.
+
+Tests for units related to one big task should be grouped together in one "test suite". For example, all the methods in our handler perform part of the same task, so these might constitute a test suite. This will make it easier for us to change, modify, and read our tests. In this lesson, we'll talk about test suites.
+
+Creating a Test Suite
+The describe() function is used to define a test suite. It takes two parameters: the suite name (the description of what is being tested), and a callback function with tests.
+
+```js
+describe("Request handler tests", () => {
+  test("should validate the data", () => {
+    /* test code */
+  });
+  test("should calculate the password hash", () => {
+    /* test code */
+  });
+  test("should write the data to the database", () => {
+    /* test code */
+  });
+});
+```
+
+The describe() function adds some new information to the test result message:
+
+```bash
+  PASS  ./api.test.js
+  User registration endpoint # the new line
+  ✓ should validate the data (3ms)
+  ✓ should calculate the password hash (5ms)
+  ✓ should write the data to the database (7ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       3 passed, 3 total
+Snapshots:   0 total
+Time:        1.747s
+Ran all test suites.
+```
+
+So, let's sum everything up. Using the describe() method helps us organize tests properly. This saves us a lot of time when writing tests.
