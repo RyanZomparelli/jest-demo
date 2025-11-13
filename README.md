@@ -2,6 +2,34 @@
 
 This guide introduces automated testing with [Jest](https://jestjs.io/), including how to set up a simple project, write your first tests, read test output, and use core matcher functions.
 
+## Table of Contents
+
+- [Automated Testing: Testing Frameworks and Methods](#automated-testing-testing-frameworks-and-methods)
+  - [What Is a Testing Framework?](#what-is-a-testing-framework)
+  - [Example Project Setup (Jest Demo)](#example-project-setup-jest-demo)
+  - [Installing Jest](#installing-jest)
+  - [Where to Write Tests](#where-to-write-tests)
+  - [Example: Implementation File](#example-implementation-file)
+  - [Writing Your First Test](#writing-your-first-test)
+  - [Reading Failed Test Output](#reading-failed-test-output)
+  - [Core Jest Matchers](#core-jest-matchers)
+    - [toBe](#tobe)
+    - [toEqual](#toequal)
+    - [toStrictEqual](#tostrictequal)
+    - [toBeTruthy / toBeFalsy](#tobetruthy--tobefalsy)
+    - [toBeUndefined / toBeDefined](#tobeundefined--tobedefined)
+    - [toBeNull](#tobenull)
+    - [toMatch](#tomatch)
+    - [toContain](#tocontain)
+    - [Numeric Comparison Matchers](#numeric-comparison-matchers)
+  - [Why Automated Tests Matter](#why-automated-tests-matter)
+  - [Test Suites](#test-suites)
+  - [Testing HTTP Requests](#testing-http-requests)
+    - [Preparing the Project for Testing](#preparing-the-project-for-testing)
+    - [Installing SuperTest](#installing-supertest)
+    - [Checking Request Sending](#checking-request-sending)
+    - [Configuring Requests](#configuring-requests)
+
 ---
 
 ## What Is a Testing Framework?
@@ -193,7 +221,7 @@ This makes locating and fixing issues much easier.
 
 Below are commonly used Jest matcher methods. All are used with expect().
 
-**toBe()**
+#### toBe()
 
 Strict equality (primitives and references).
 
@@ -211,7 +239,7 @@ const y = {};
 expect(x).toBe(y); // fails (different references)
 ```
 
-**toEqual()**
+#### toEqual()
 
 Deep equality for objects and arrays (ignores extra properties in received object).
 
@@ -226,7 +254,7 @@ expect({ a: undefined, b: 10 }).toEqual({ a: 12, b: 10 });
 expect([1, 2, 3, undefined]).toEqual([1, 2, 3]); // length differs
 ```
 
-**toStrictEqual()**
+#### toStrictEqual()
 
 Stricter deep equality — no extra props, and distinguishes missing vs undefined.
 
@@ -240,7 +268,7 @@ expect({ a: undefined, b: 10 }).toStrictEqual({ b: 10 }); // extra prop `a`
 expect([[undefined, 1]]).toStrictEqual([[, 1]]); // missing vs undefined
 ```
 
-**toBeTruthy() / toBeFalsy()**
+#### toBeTruthy() / toBeFalsy()
 
 Check JS truthiness / falsiness.
 
@@ -257,7 +285,7 @@ expect(0).toBeTruthy();
 expect(true).toBeFalsy();
 ```
 
-**toBeUndefined() / toBeDefined()**
+#### toBeUndefined() / toBeDefined()
 
 Compare against undefined.
 
@@ -273,7 +301,7 @@ expect(x).toBeDefined(); // x is undefined
 expect(undefined).toBeDefined();
 ```
 
-**toBeNull()**
+#### toBeNull()
 
 Specifically checks for null.
 
@@ -290,7 +318,7 @@ expect(undefined).toBeNull();
 expect("string").toBeNull();
 ```
 
-**toMatch()**
+#### toMatch()
 
 Checks if a string matches a regular expression.
 
@@ -305,7 +333,7 @@ expect("21as1").toMatch(/^\d+$/);
 expect("string").toMatch(/^\d+$/);
 ```
 
-**toContain()**
+#### toContain()
 
 Checks if an array (or string) contains a given item/substr.
 
@@ -319,7 +347,7 @@ expect("Oh, hi Mark!").toContain("Lisa");
 expect(["Mary", "Louisa", "Stuart"]).toContain("Louise");
 ```
 
-**Numeric Comparison Matchers**
+#### Numeric Comparison Matchers
 
 - toBeGreaterThan()
 
@@ -397,3 +425,126 @@ Ran all test suites.
 ```
 
 So, let's sum everything up. Using the describe() method helps us organize tests properly. This saves us a lot of time when writing tests.
+
+## Testing HTTP Requests
+
+In the chapter about asynchronous code, we used an external API: https://se-quotes-api.onrender.com. One day, the se-quotes-api engineers may change the rules for accessing their API, and our project will stop working.
+
+To account for this, we'll need to write some tests for our request handlers. In this lesson, we'll talk about the [SuperTest library](https://github.com/forwardemail/supertest#readme), which provides convenient tools for creating such tests.
+
+### Preparing the Project for Testing
+
+In order to test the server, we'll need to slightly modify the project structure. We need to prevent SuperTest from calling app.listen() when it runs its tests.
+
+SuperTest works as follows:
+**start testing → connect to the server → run tests → disconnect from the server → finish tests.**
+The main takeaway here is that SuperTest takes charge of connecting to and from the server.
+
+But SuperTest does this on its own, it doesn’t need to make use of the app.listen() method that we use to start our application. In fact, if we let this code execute when SuperTest runs its tests, then SuperTest won't be able to shut down the server once the tests are complete and, therefore, won’t be able to exit properly. When this happens, you’ll get the following error:
+
+```bash
+Jest did not exit one second after the test run has completed.
+
+This usually means that there are asynchronous operations that weren't stopped in your tests. Consider running Jest with `--detectOpenHandles` to troubleshoot this issue.
+```
+
+There is an easy way to correct this. When running tests, process.env.NODE_ENV is automatically set to "test" by the Jest runner. So, we can just check for that and only start listening to port 3001 when not running in test mode:
+
+```js
+if (process.env.NODE_ENV !== "test") {
+  app.listen(PORT, () => {
+    console.log(`App listening on port ${PORT}`);
+  });
+}
+```
+
+### Installing SuperTest
+
+Run the command
+
+```bash
+npm install --save-dev supertest.
+```
+
+Add test script
+
+```json
+// package.json
+"scripts": {
+"start": "node app.js",
+"test": "jest"
+}
+```
+
+Create an endpoint.test.js file for our tests. Connect the library to this file:
+
+```js
+// endpoint.test.js
+const supertest = require("supertest");
+const app = require("./app.js");
+```
+
+The supertest variable contains a function. Pass your app to it as follows:
+
+```js
+const request = supertest(app);
+```
+
+All done! Now we can access the library's methods through the request object. All methods of this object will return promises that need to be processed asynchronously.
+
+### Checking Request Sending
+
+For each type of request, there is a method with the same name:
+
+- get(),
+- post(),
+- delete(),
+- put(), and
+- patch().
+
+For each of these methods, we pass the URL of the request we want to check as an argument:
+
+```js
+describe("Endpoints respond to requests", () => {
+  it('Returns data and status 200 on request to "/"', () => {
+    return request.get("/").then((response) => {
+      expect(response.status).toBe(200);
+      expect(response.text).toBe("Hello, world!");
+    });
+  });
+});
+```
+
+When testing promises, return them by writing return before request.get(). This will automatically make Jest wait for the promise to resolve or report an error if it's rejected.
+
+### Configuring Requests
+
+In addition to URLs, requests have attributes. Some of these attributes can contain files. Let's have a look at the corresponding methods.
+
+- set() sets the attributes. It has two parameters: the name of the attribute and its value:
+
+```js
+.set('Cookie', ['token=u1a90aw7812689adukqyw61;'])
+```
+
+- send() sets the request body. The method name may be confusing, but we can easily remember the difference: the get(), post(), delete(), put(), and patch() methods are used to send requests, while send() allows us to add data to the request body:
+
+```js
+.send({ name: 'Mr Pink' })
+```
+
+- query() allows us to configure a GET request, which doesn't have a body, only a URL. To add data to this URL, pass the data to the query() method inside an object, like this:
+
+```js
+.query({ per_page: '50', offset: '20' })
+```
+
+- attach() is used to attach a file to the request. The first parameter is the file name, the second is the relative path to it:
+
+```js
+.attach('avatar', 'test/fixtures/avatar.jpg')
+```
+
+Notice the fixtures directory. This is a common way to name a directory containing all the necessary data for testing, such as picture, audio, and video files.
+
+That's all for now. You can find the complete list of methods in the SuperTest documentation.
