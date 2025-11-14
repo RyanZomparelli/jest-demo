@@ -29,6 +29,7 @@ This guide introduces automated testing with [Jest](https://jestjs.io/), includi
     - [Installing SuperTest](#installing-supertest)
     - [Checking Request Sending](#checking-request-sending)
     - [Configuring Requests](#configuring-requests)
+  - [Database Testing](#database-testing)
 
 ---
 
@@ -548,3 +549,111 @@ In addition to URLs, requests have attributes. Some of these attributes can cont
 Notice the fixtures directory. This is a common way to name a directory containing all the necessary data for testing, such as picture, audio, and video files.
 
 That's all for now. You can find the complete list of methods in the SuperTest documentation.
+
+## Database Testing
+
+In one of the previous chapters, we discussed how to connect a database to a server. In this lesson, we'll show you how we can test our interactions with a database.
+
+There is a limitation to this: we can't use real data in tests. This is because if there's a problem with a function, it can actually damage user data. Therefore, in order to perform tests, engineers add random meaningless data to the database and then delete it.
+
+So, the algorithm is as follows: add test data to the database → test → delete test data.
+
+The same algorithm applies to each individual test. Jest provides four methods that can help us with this:
+
+beforeAll() and afterAll() will respectively run before and after running all tests in a file.
+beforeEach() and afterEach() will run before and after each test, respectively. These will take longer and are more diligent, as they run twice for every test you write.
+Say we want to run database tests using sample data. We can add it to the database before we run the tests and delete it after they are finished; thebeforeAll() and afterAll() methods are perfect for this.
+
+At the beginning of each test, we'll add test data to the database, and then we'll delete it at the end. This is where beforeEach() and afterEach() help us.
+
+Let's write these methods:
+
+```js
+beforeAll(() => {
+  // connecting to the database
+});
+
+afterAll(() => {
+  // disconnecting from the database
+});
+
+describe("Database tests", () => {
+  beforeEach(() => {
+    // before each test, add the needed test data to the database
+  });
+
+  afterEach(() => {
+    // after each test, remove the data from the database
+  });
+
+  test("should test...", () => {
+    /* code to check if the tests function properly */
+  });
+});
+```
+
+We can also call the beforeAll() and afterAll() methods inside the describe() block. Then, the beforeAll() and afterAll() callbacks will be called at the beginning and end of the test suite, respectively:
+
+```js
+beforeAll(() => {
+  // connecting to the database
+});
+
+afterAll(() => {
+  // disconnecting from the database
+});
+
+describe("Database tests", () => {
+  beforeAll(() => {
+    // will run before all tests inside this describe() block
+    // code that adds the necessary test data before the tests run
+  });
+
+  afterAll(() => {
+    // will run after all tests inside this describe() block
+    // code that removes the test data from the database after all the the tests have run
+  });
+
+  test("db...", () => {
+    /*  code to check db tests */
+  });
+  test("performs other tests...", () => {
+    /* code to check other tests */
+  });
+});
+
+describe("Endpoint tests", () => {
+  /*
+    beforeAll() and afterAll() from the previous describe() block
+    won't be run here, but the global beforeAll() and afterAll() will be run
+  */
+
+  test("the endpoints", () => {
+    /* code to check tests */
+  });
+});
+```
+
+The beforeAll(), afterAll(), beforeEach(), and afterEach() methods let us test our databases "silently", that is, we add test data and then simply erase it after we're finished. The important thing is that we carefully arrange all our testing methods, and this skill comes with practice.
+
+### When testing a database:
+
+Connect to the database before testing and disconnect from it after
+Add test data to the database before each test, and remove it after each test
+Mongoose methods for these tasks:
+
+- mongoose.connect() — used to connect. It takes two arguments: the base URL and the options object.
+- mongoose.disconnect() — used to disconnect.
+- mongoose.create() — used to create a new document.
+- mongoose.deleteOne() — used to delete a document from the database. It takes an object with data as an argument, and the document matching the passed data will be deleted, for example:
+
+```js
+// find a document whose username field is 'Will':
+User.deleteOne({ username: "Will" });
+```
+
+You can also use a separate database and reset it completely using the dropDatabase() method once you've finished testing:
+
+```js
+mongoose.connection.db.dropDatabase();
+```
